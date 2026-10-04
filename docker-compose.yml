@@ -1,0 +1,33 @@
+services:
+  vikunja-mcp:
+    build: .
+    container_name: vikunja-mcp
+    restart: unless-stopped
+    env_file: .env
+    # Only reachable through the Cloudflare Tunnel by default. Uncomment to expose on the host
+    # (e.g. if your existing cloudflared runs outside Docker and points at localhost:3000).
+    # ports:
+    #   - "127.0.0.1:3000:3000"
+    networks:
+      - default
+
+  # Option A: a dedicated tunnel just for this connector.
+  # Create a tunnel in the Cloudflare dashboard (Zero Trust -> Networks -> Tunnels), copy its token
+  # into CLOUDFLARE_TUNNEL_TOKEN in .env, and add a public hostname that points to
+  # http://vikunja-mcp:3000
+  #
+  # Option B: you already run cloudflared for Vikunja. Delete this service, add a public hostname
+  # to your existing tunnel that points at this container, and put both containers on one network.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - vikunja-mcp
+    profiles: ["tunnel"]
+
+networks:
+  default:
+    name: vikunja-mcp
